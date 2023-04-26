@@ -4,26 +4,13 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"router/controllers"
 	"router/views"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 )
-
-func executeTemplate(w http.ResponseWriter, filepath string) {
-	tmpl, _ := views.Parse(filepath)
-	tmpl.Execute(w, nil)
-}
-func homeHander(w http.ResponseWriter, r* http.Request) {
-	tplPath := filepath.Join("templates", "home.gohtml")
-	executeTemplate(w, tplPath)
-}
-
-func contactHandler(w http.ResponseWriter, r* http.Request){
-	tplPath := filepath.Join("templates", "contact.gohtml")
-	executeTemplate(w, tplPath)
-}
 
 func notFoundhandler(w http.ResponseWriter, r* http.Request) {
 	w.WriteHeader(http.StatusNotFound)
@@ -36,26 +23,27 @@ func setupRouter() *chi.Mux {
 	r.Use(middleware.RealIP)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
-
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	return r
 }
 
-func articleHandler(w http.ResponseWriter, r* http.Request) {
-	articleId := chi.URLParam(r, "articleId")
-
-	fmt.Fprintf(w, "<h1>Article number" + articleId + "</h1>")
-}
 
 func main() {
 	r := setupRouter()
-
-	r.Get("/", homeHander)
-	r.Get("/contact", contactHandler)
+	tpl, err := views.Parse(filepath.Join("templates", "home.gohtml"))
+	if err != nil {
+		panic(err)
+	}
+	r.Get("/", controllers.StaticHandler(tpl))
+	
+	tpl, err = views.Parse(filepath.Join("templates", "contact.gohtml"))
+	if err != nil {
+		panic(err)
+	}
+	r.Get("/contact", controllers.StaticHandler(tpl))
+	
 	r.NotFound(notFoundhandler)
-
-	r.Get("/articles/{articleId}", articleHandler)
 
 	http.ListenAndServe(":3000", r)
 }
